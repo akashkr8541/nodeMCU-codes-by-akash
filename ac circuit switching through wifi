@@ -1,0 +1,72 @@
+#include <ESP8266WiFi.h>
+
+const char* ssid = "osho baba";
+const char* password = "bhaibhai";
+
+String header;
+WiFiServer server(80); 
+
+void setup(){
+Serial.begin(115200);
+pinMode(D0,OUTPUT);
+Serial.print("Connecting to.....");
+Serial.println(ssid);
+WiFi.begin(ssid,password);
+while(WiFi.status()!=WL_CONNECTED){
+  delay(500); 
+  Serial.print(".");
+}
+Serial.println("WiFi connected");
+Serial.println("IP Address: ");
+Serial.println(WiFi.localIP());
+server.begin();
+}
+void loop(){
+WiFiClient client=server.available();  //listen incoming clients
+
+if(client){
+  Serial.println("New Client");
+  String currentLine="";
+  while (client.connected()){
+    if (client.available()){
+      char c = client.read();
+      Serial.write(c);
+      header += c;
+
+      if (c == '\n'){
+        if (currentLine.length()==0){
+          client.println("HTTP/1.1 200 OK");
+          client.println("Content-type:text/html");
+          client.println("Connection: close");
+          client.println();
+
+          if (header.indexOf("GET /on") >= 0){
+            Serial.println("D0 on");
+            digitalWrite(D0,HIGH);
+          }else if  (header.indexOf("GET /off") >= 0){
+            Serial.println("D0 off");
+            digitalWrite(D0,LOW);
+          }
+          client.println("<html><body><h1>ESP8266 WEB SERVER</h1>");
+          client.println("<p> <a href='on'><button>ON<button></a></p>");
+          client.println("<p><a href='off'><button>OFF<button></a></p>");
+          client.println("</body></html>");
+          client.println();
+            // Break out of the while loop
+            break;
+          } else { // if you got a newline, then clear currentLine
+            currentLine = "";
+          }
+        } else if (c != '\r') {  // if you got anything else but a carriage return character,
+          currentLine += c;      // add it to the end of the currentLine
+        }
+      }
+    }
+    // Clear the header variable
+    header = "";
+    // Close the connection
+    client.stop();
+    Serial.println("Client disconnected.");
+    Serial.println("");
+  }
+}
